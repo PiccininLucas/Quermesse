@@ -1,0 +1,23 @@
+# Streamlit secrets (contém senhas e tokens confidenciais)
+.streamlit/secrets.toml
+
+# Bancos de dados locais (SQLite)
+*.db
+estoque.db
+estoque.xlsx
+
+# Python cache e bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Arquivos de sistema
+Thumbs.db
+Desktop.ini
+.DS_Store
