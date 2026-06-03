@@ -56,8 +56,10 @@ def check_credentials(username, password):
         users = st.secrets["credentials"]["usernames"]
         if username in users:
             user_info = users[username]
-            if str(user_info["password"]) == str(password):
-                return user_info["name"]
+            # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
+            if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
+                if str(user_info["password"]) == str(password):
+                    return user_info["name"]
     return None
 
 if not st.session_state.logged_in:
