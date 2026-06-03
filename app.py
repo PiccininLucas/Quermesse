@@ -20,18 +20,28 @@ if not TURSO_URL or "[SEU_BANCO]" in TURSO_URL or not TURSO_TOKEN or "[SEU_TOKEN
     engine = create_engine(DB_URL)
     is_sqlite = True
 else:
-    is_sqlite = False
     # O sqlalchemy-libsql exige o prefixo sqlite+libsql://
     if TURSO_URL.startswith("libsql://"):
         DB_URL = TURSO_URL.replace("libsql://", "sqlite+libsql://", 1)
     else:
         DB_URL = TURSO_URL
     
-    # Criar engine com os argumentos de autenticação para o Turso
-    engine = create_engine(
-        DB_URL,
-        connect_args={"auth_token": TURSO_TOKEN}
-    )
+    try:
+        # Tenta criar o engine com os argumentos de autenticação para o Turso
+        engine = create_engine(
+            DB_URL,
+            connect_args={"auth_token": TURSO_TOKEN}
+        )
+        # Testar se o dialect/driver consegue ser carregado executando uma conexão simples
+        with engine.connect() as conn:
+            pass
+        is_sqlite = False
+    except Exception as e:
+        # Se falhar (ex: módulo sqlalchemy-libsql não instalado), faz o fallback para o SQLite local
+        DB_URL = "sqlite:///estoque.db"
+        engine = create_engine(DB_URL)
+        is_sqlite = True
+        st.sidebar.warning("⚠️ O driver do Turso não está instalado ou o banco está inacessível. Usando banco de dados SQLite local temporariamente.")
 
 # ==========================================
 # SISTEMA DE AUTENTICAÇÃO VIA STREAMLIT SECRETS
@@ -364,6 +374,29 @@ st.title("🎪 Gestão de Inventário - Quermesse")
 
 # Sidebar User Info & Logout
 st.sidebar.markdown(f"👤 **Usuário:** {st.session_state.user_name}")
+
+# Verificar status da conexão com o banco de dados
+from sqlalchemy import text
+db_online = False
+db_err = None
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    db_online = True
+except Exception as e:
+    db_err = str(e)
+
+if db_online:
+    if is_sqlite:
+        st.sidebar.success("🟢 Banco: SQLite Local (Online)")
+    else:
+        st.sidebar.success("🟢 Banco: Turso Cloud (Online)")
+else:
+    st.sidebar.error("🔴 Banco: Desconectado/Offline")
+    if db_err:
+        with st.sidebar.expander("Ver detalhes do erro"):
+            st.code(db_err, language="text")
+
 if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
     st.session_state.logged_in = False
     st.session_state.user_name = ""
