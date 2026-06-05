@@ -7,41 +7,38 @@ from datetime import datetime
 st.set_page_config(page_title="Gestão de Estoque - Quermesse", layout="wide")
 
 # Tentar buscar do st.secrets primeiro, depois do os.getenv, e fallback para SQLite local se não houver configuração
+# Tentar buscar a URL do banco de dados (PostgreSQL/outros) do secrets ou env vars
 try:
-    TURSO_URL = st.secrets.get("TURSO_DATABASE_URL") or os.getenv("TURSO_DATABASE_URL", "")
-    TURSO_TOKEN = st.secrets.get("TURSO_AUTH_TOKEN") or os.getenv("TURSO_AUTH_TOKEN", "")
+    DATABASE_URL = st.secrets.get("DATABASE_URL") or os.getenv("DATABASE_URL", "")
 except (FileNotFoundError, KeyError):
-    TURSO_URL = os.getenv("TURSO_DATABASE_URL", "")
-    TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
 
-# Se estiver vazio ou contiver os templates de exemplo do Turso, usar SQLite local
-if not TURSO_URL or "[SEU_BANCO]" in TURSO_URL or not TURSO_TOKEN or "[SEU_TOKEN_DE_AUTENTICACAO]" in TURSO_TOKEN:
-    DB_URL = "sqlite:///estoque.db"
-    engine = create_engine(DB_URL)
-    is_sqlite = True
-else:
-    # O sqlalchemy-libsql exige o prefixo sqlite+libsql://
-    if TURSO_URL.startswith("libsql://"):
-        DB_URL = TURSO_URL.replace("libsql://", "sqlite+libsql://", 1)
-    else:
-        DB_URL = TURSO_URL
+# Se a URL estiver configurada, conectar ao PostgreSQL
+if DATABASE_URL:
+    # Render/Heroku usam postgres:// por padrão, mas o SQLAlchemy exige postgresql://
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
     try:
-        # Tenta criar o engine com os argumentos de autenticação para o Turso
-        engine = create_engine(
-            DB_URL,
-            connect_args={"auth_token": TURSO_TOKEN}
-        )
-        # Testar se o dialect/driver consegue ser carregado executando uma conexão simples
+        engine = create_engine(DATABASE_URL)
+        # Testar se a conexão funciona
         with engine.connect() as conn:
             pass
         is_sqlite = False
+        db_type = "PostgreSQL"
     except Exception as e:
-        # Se falhar (ex: módulo sqlalchemy-libsql não instalado), faz o fallback para o SQLite local
+        # Fallback se houver algum erro de conexão
         DB_URL = "sqlite:///estoque.db"
         engine = create_engine(DB_URL)
         is_sqlite = True
-        st.sidebar.warning("⚠️ O driver do Turso não está instalado ou o banco está inacessível. Usando banco de dados SQLite local temporariamente.")
+        db_type = "SQLite Local"
+        st.sidebar.warning(f"⚠️ Não foi possível conectar ao banco PostgreSQL. Usando SQLite local. Detalhe: {e}")
+else:
+    DB_URL = "sqlite:///estoque.db"
+    engine = create_engine(DB_URL)
+    is_sqlite = True
+    db_type = "SQLite Local"
+
 
 # ==========================================
 # SISTEMA DE AUTENTICAÇÃO VIA STREAMLIT SECRETS
@@ -389,12 +386,9 @@ except Exception as e:
     db_err = str(e)
 
 if db_online:
-    if is_sqlite:
-        st.sidebar.success("🟢 Banco: SQLite Local (Online)")
-    else:
-        st.sidebar.success("🟢 Banco: Turso Cloud (Online)")
+    st.sidebar.success(f"🟢 Banco: {db_type} (Online)")
 else:
-    st.sidebar.error("🔴 Banco: Desconectado/Offline")
+    st.sidebar.error(f"🔴 Banco: {db_type} (Offline)")
     if db_err:
         with st.sidebar.expander("Ver detalhes do erro"):
             st.code(db_err, language="text")
