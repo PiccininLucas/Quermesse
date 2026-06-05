@@ -10,7 +10,7 @@ st.set_page_config(page_title="Gestão de Estoque - Quermesse", layout="wide")
 # Tentar buscar a URL do banco de dados (PostgreSQL/outros) do secrets ou env vars
 try:
     DATABASE_URL = st.secrets.get("DATABASE_URL") or os.getenv("DATABASE_URL", "")
-except (FileNotFoundError, KeyError):
+except Exception:
     DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # Se a URL estiver configurada, conectar ao PostgreSQL
@@ -49,14 +49,17 @@ if 'user_name' not in st.session_state:
     st.session_state.user_name = ""
 
 def check_credentials(username, password):
-    if "credentials" in st.secrets and "usernames" in st.secrets["credentials"]:
-        users = st.secrets["credentials"]["usernames"]
-        if username in users:
-            user_info = users[username]
-            # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
-            if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
-                if str(user_info["password"]) == str(password):
-                    return user_info["name"]
+    try:
+        if "credentials" in st.secrets and "usernames" in st.secrets["credentials"]:
+            users = st.secrets["credentials"]["usernames"]
+            if username in users:
+                user_info = users[username]
+                # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
+                if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
+                    if str(user_info["password"]) == str(password):
+                        return user_info["name"]
+    except Exception:
+        pass
     return None
 
 if not st.session_state.logged_in:
