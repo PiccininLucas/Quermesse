@@ -7,11 +7,45 @@ from datetime import datetime
 st.set_page_config(page_title="Gestão de Estoque - Quermesse", layout="wide")
 
 # Tentar buscar do st.secrets primeiro, depois do os.getenv, e fallback para SQLite local se não houver configuração
-# Tentar buscar a URL do banco de dados (PostgreSQL/outros) do secrets ou env vars
-try:
-    DATABASE_URL = st.secrets.get("DATABASE_URL") or os.getenv("DATABASE_URL", "")
-except Exception:
-    DATABASE_URL = os.getenv("DATABASE_URL", "")
+# Função auxiliar para carregar arquivos TOML de forma segura em diferentes ambientes
+def load_toml_file(path):
+    if not os.path.exists(path):
+        return None
+    try:
+        import tomllib
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    except ImportError:
+        try:
+            import toml
+            return toml.load(path)
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+# Tenta obter uma configuração de banco das variáveis de ambiente, st.secrets ou arquivos TOML
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if not DATABASE_URL:
+    try:
+        DATABASE_URL = st.secrets.get("DATABASE_URL") or ""
+    except Exception:
+        pass
+
+if not DATABASE_URL:
+    # Fallback de carregamento manual para contornar problemas no Render
+    paths_to_check = [
+        ".streamlit/secrets.toml",
+        "secrets.toml",
+        "/opt/render/project/src/.streamlit/secrets.toml",
+        "/opt/render/project/src/secrets.toml"
+    ]
+    for p in paths_to_check:
+        secrets_dict = load_toml_file(p)
+        if secrets_dict and "DATABASE_URL" in secrets_dict:
+            DATABASE_URL = secrets_dict["DATABASE_URL"]
+            break
 
 # Se a URL estiver configurada, conectar ao PostgreSQL
 if DATABASE_URL:
@@ -48,16 +82,36 @@ if 'logged_in' not in st.session_state:
 if 'user_name' not in st.session_state:
     st.session_state.user_name = ""
 
-def check_credentials(username, password):
+def get_credentials():
+    # 1. Tenta st.secrets nativo
     try:
         if "credentials" in st.secrets and "usernames" in st.secrets["credentials"]:
-            users = st.secrets["credentials"]["usernames"]
-            if username in users:
-                user_info = users[username]
-                # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
-                if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
-                    if str(user_info["password"]) == str(password):
-                        return user_info["name"]
+            return st.secrets["credentials"]["usernames"]
+    except Exception:
+        pass
+        
+    # 2. Tenta carregamento manual do TOML como fallback
+    paths_to_check = [
+        ".streamlit/secrets.toml",
+        "secrets.toml",
+        "/opt/render/project/src/.streamlit/secrets.toml",
+        "/opt/render/project/src/secrets.toml"
+    ]
+    for p in paths_to_check:
+        secrets_dict = load_toml_file(p)
+        if secrets_dict and "credentials" in secrets_dict and "usernames" in secrets_dict["credentials"]:
+            return secrets_dict["credentials"]["usernames"]
+    return {}
+
+def check_credentials(username, password):
+    try:
+        users = get_credentials()
+        if username in users:
+            user_info = users[username]
+            # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
+            if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
+                if str(user_info["password"]) == str(password):
+                    return user_info["name"]
     except Exception:
         pass
     return None
