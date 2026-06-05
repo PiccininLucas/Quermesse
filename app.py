@@ -405,13 +405,14 @@ tipo_cadastro = st.sidebar.radio("O que deseja gerenciar?", ["Itens de Estoque",
 
 if tipo_cadastro == "Itens de Estoque":
     st.sidebar.subheader("Adicionar Novo Item")
-    with st.sidebar.form("form_cadastro_item", clear_on_submit=True):
+    form_cadastro_item = st.sidebar.form("form_cadastro_item", clear_on_submit=True)
+    with form_cadastro_item:
         novo_item = st.text_input("Nome do Item")
         nova_categoria = st.selectbox("Categoria", ["Comida", "Bebida", "Brincadeira", "Outros"])
         nova_qtd = st.number_input("Quantidade Inicial", min_value=0, step=1)
         novo_min = st.number_input("Estoque Mínimo", min_value=0, step=1)
         
-        submit_button = st.form_submit_button("Adicionar Item")
+        submit_button = form_cadastro_item.form_submit_button("Adicionar Item")
         if submit_button:
             nome_limpo = novo_item.strip()
             item_ja_existe = False
@@ -440,9 +441,10 @@ if tipo_cadastro == "Itens de Estoque":
     st.sidebar.divider()
     st.sidebar.subheader("Remover Item Existente")
     itens_disp = list(nome_to_id_item.keys()) if nome_to_id_item else ["Nenhum"]
-    with st.sidebar.form("form_remover_item"):
+    form_remover_item = st.sidebar.form("form_remover_item")
+    with form_remover_item:
         item_remover = st.selectbox("Selecione o Item", itens_disp)
-        btn_rem_item = st.form_submit_button("Remover Item")
+        btn_rem_item = form_remover_item.form_submit_button("Remover Item")
         if btn_rem_item and item_remover != "Nenhum":
             id_remover = nome_to_id_item[item_remover]
             st.session_state.df = st.session_state.df[st.session_state.df['ID_Item'] != id_remover]
@@ -457,9 +459,10 @@ if tipo_cadastro == "Itens de Estoque":
 
 elif tipo_cadastro == "Barracas":
     st.sidebar.subheader("Adicionar Nova Barraca")
-    with st.sidebar.form("form_cadastro_barraca", clear_on_submit=True):
+    form_cadastro_barraca = st.sidebar.form("form_cadastro_barraca", clear_on_submit=True)
+    with form_cadastro_barraca:
         nova_b = st.text_input("Nome da nova barraca")
-        btn_add_b = st.form_submit_button("Adicionar Barraca")
+        btn_add_b = form_cadastro_barraca.form_submit_button("Adicionar Barraca")
         if btn_add_b:
             b_limpa = nova_b.strip()
             b_ja_existe = False
@@ -481,9 +484,10 @@ elif tipo_cadastro == "Barracas":
     st.sidebar.divider()
     st.sidebar.subheader("Remover Barraca Existente")
     barracas_disp = list(nome_to_id_barraca.keys()) if nome_to_id_barraca else ["Nenhuma"]
-    with st.sidebar.form("form_remover_barraca"):
+    form_remover_barraca = st.sidebar.form("form_remover_barraca")
+    with form_remover_barraca:
         b_remover = st.selectbox("Selecione a Barraca", barracas_disp)
-        btn_rem_b = st.form_submit_button("Remover Barraca")
+        btn_rem_b = form_remover_barraca.form_submit_button("Remover Barraca")
         if btn_rem_b and b_remover != "Nenhuma":
             id_rem_b = nome_to_id_barraca[b_remover]
             st.session_state.barracas_df = st.session_state.barracas_df[st.session_state.barracas_df['ID_Barraca'] != id_rem_b]
@@ -504,11 +508,12 @@ elif tipo_cadastro == "Receitas (Baixa Múltipla)":
     barracas_disp_rec = list(nome_to_id_barraca.keys()) if nome_to_id_barraca else ["Nenhuma"]
     barraca_receita_nome = st.sidebar.selectbox("Barraca Associada", barracas_disp_rec)
     
-    with st.sidebar.form("form_add_ingrediente", clear_on_submit=False):
+    form_add_ingrediente = st.sidebar.form("form_add_ingrediente", clear_on_submit=False)
+    with form_add_ingrediente:
         itens_disp = list(nome_to_id_item.keys()) if nome_to_id_item else []
         ingred_selecionado_nome = st.selectbox("Selecione o Ingrediente", itens_disp)
         qtd_ingred = st.number_input("Quantidade Necessária", min_value=1, step=1)
-        btn_add_ingred = st.form_submit_button("Adicionar à Receita")
+        btn_add_ingred = form_add_ingrediente.form_submit_button("Adicionar à Receita")
         
         if btn_add_ingred:
             nome_r = nome_receita.strip()
