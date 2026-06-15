@@ -7,11 +7,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.10.12"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: quermesse-db
-          property: connectionString
-
-databases:
-  - name: quermesse-db
-    plan: free

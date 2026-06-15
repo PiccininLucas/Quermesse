@@ -106,10 +106,11 @@ def get_credentials():
 def check_credentials(username, password):
     try:
         users = get_credentials()
-        if username in users:
-            user_info = users[username]
+        username_lower = username.strip().lower()
+        if username_lower in users:
+            user_info = users[username_lower]
             # Validação robusta de tipo para evitar crashes se os segredos estiverem mal formatados
-            if isinstance(user_info, dict) and "password" in user_info and "name" in user_info:
+            if hasattr(user_info, "get") and "password" in user_info and "name" in user_info:
                 if str(user_info["password"]) == str(password):
                     return user_info["name"]
     except Exception:
